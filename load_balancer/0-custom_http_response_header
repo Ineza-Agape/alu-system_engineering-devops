@@ -1,15 +1,90 @@
 #!/usr/bin/env bash
-# Customizing a 404-error_page
 
-# Updating Packages before performing installations
-sudo apt-get update
-sudo apt-get install -y nginx
-# Performing a "moved permanently redirection" (301)
-new_string="server_name _;\n\trewrite ^\/redirect_me https:\/\/www.youtube.com/watch?v=rpaonSDPw7Y permanent;"
-sudo sed -i "s/server_name _;/$new_string/" /etc/nginx/sites-enabled/default
-new_string="listen 80 default_server;\n\terror_page 404 \/404.html;\n\tlocation = \/404.html {\n\t\troot \/var\/www\/html;\n\t\tinternal;\n\t}"
-sudo sed -i "s/listen 80 default_server;/$new_string/" /etc/nginx/sites-enabled/default
-# Creating an HTTP response header
-sudo sed -i "/server_name _/a add_header X-Served-By $HOSTNAME;" /etc/nginx/sites-enabled/default
+# Customizing a 404-error_page and configuring web servers
+
+# Updating packages before performing installations
+echo -e "Updating packages...\n"
+sudo apt-get update -y -qq
+
+# Function to install packages if not already installed
+function install() {
+    command -v "$1" &> /dev/null
+
+    if [ $? -ne 0 ]; then
+        echo -e "Installing: $1\n"
+        sudo apt-get install -y "$1" -qq
+    else
+        echo -e "$1 is already installed.\n"
+    fi
+}
+
+# Install nginx
+install nginx
+
+# Allow nginx on firewall
+sudo ufw allow 'Nginx HTTP'
+
+# Give the user ownership to website files for easy editing
+if [ -d "/var/www" ]; then
+    sudo chown -R "$USER":"$USER" /var/www
+    sudo chmod -R 755 /var/www
+else
+    sudo mkdir -p /var/www
+    sudo chown -R "$USER":"$USER" /var/www
+    sudo chmod -R 755 /var/www
+fi
+
+# Create directories if not present
+for dir in /var/www/{html,error}; do
+    if ! [ -d "$dir" ]; then
+        mkdir -p "$dir"
+    fi
+done
+
+# Creating new index
+echo "Hello World!" > /var/www/html/index.html
+
+# Create new error page
+echo "Ceci n'est pas une page" > /var/www/html/error_404.html
+
+# Backup default server config file
+sudo cp /etc/nginx/sites-enabled/default /etc/nginx/nginx-sites-enabled_default.backup
+
+# Nginx configuration
+server_config="
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    root /var/www/html;
+    index index.html index.htm index.nginx-debian.html;
+    server_name _;
+    add_header X-Served-By \$hostname;
+    
+    location / {
+        try_files \$uri \$uri/ =404;
+    }
+    
+    if (\$request_filename ~ redirect_me) {
+        rewrite ^ https://www.youtube.com/watch?v=rpaonSDPw7Y permanent;
+    }
+    
+    error_page 404 /404.html;
+    location = /404.html {
+        root /var/www/html;
+        internal;
+    }
+}
+"
+
+# Write the configuration to the Nginx config file
+echo "$server_config" | sudo tee /etc/nginx/sites-enabled/default > /dev/null
+
 # Restart nginx after implementing changes
-sudo service nginx restart
+if [ "$(pgrep -c nginx)" -le 0 ]; then
+    sudo service nginx start
+else
+    sudo service nginx restart
+fi
+
+echo -e "Configured Nginx with custom settings.\n"
+
