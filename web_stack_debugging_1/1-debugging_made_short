@@ -1,5 +1,21 @@
 #!/usr/bin/env bash
-# configures nginx to run and listen to port 80
-sed -i "s/8080/80/g" /etc/nginx/sites-enabled/default
+# Configures nginx to run and listen on port 80
+
+# Update the Nginx configuration file to listen on port 80
+sed -i "s/listen 8080 default_server;/listen 80 default_server;/g" /etc/nginx/sites-available/default
+
+# Ensure the PID file is removed if it exists
+rm -f /run/nginx.pid
+
+# Restart the Nginx service to apply changes
 service nginx restart
-echo "" > /run/nginx.pid
+
+# Check the status of the Nginx service
+service nginx status | grep -q "nginx is running"
+
+# Output the status check result
+if [ $? -eq 0 ]; then
+  echo "nginx is running"
+else
+  echo "nginx is not running"
+fi
