@@ -7,3 +7,6 @@ echo "Hello Holberton" > /var/www/html/index.html
 # Start the Apache service
 service apache2 start
 
+# Check and output the status of the Apache service
+service apache2 status | grep "apache2 is running"
+
