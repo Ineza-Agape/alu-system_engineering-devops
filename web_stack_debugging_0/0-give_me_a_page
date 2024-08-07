@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
-# Start Apache so as to return a
-# page conatining Hello Holberton
+# Start Apache and create an HTML file to return "Hello Holberton"
+
+# Create the HTML file in the Apache root directory
+echo "Hello Holberton" > /var/www/html/index.html
+
+# Start the Apache service
 service apache2 start
+
